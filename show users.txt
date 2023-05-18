@@ -1,0 +1,27 @@
+# Ensure the script is being run with administrative privileges
+if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Warning "You do not have Administrator rights to run this script!`nPlease re-run this script as an Administrator!"
+    break
+}
+
+# Registry Path
+$path = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
+
+# Registry Values
+$values = @{
+    "dontdisplaylastusername" = 0
+    "dontdisplaylockeduserid" = 3
+    "DisableCAD" = 0
+}
+
+# Create the registry key if it doesn't exist
+if (!(Test-Path $path)) {
+    New-Item -Path $path -Force | Out-Null
+}
+
+# Set the registry values
+Set-ItemProperty -Path $path -Name dontdisplaylastusername -Value $values.dontdisplaylastusername
+Set-ItemProperty -Path $path -Name dontdisplaylockeduserid -Value $values.dontdisplaylockeduserid
+Set-ItemProperty -Path $path -Name DisableCAD -Value $values.DisableCAD
+
+Write-Host "The registry has been updated successfully. A system reboot may be required for changes to take effect."
