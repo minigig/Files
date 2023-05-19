@@ -1,0 +1,5 @@
+# Get the username of the user logged into the console session
+$currentUser = (Get-WmiObject -Class Win32_ComputerSystem).UserName
+
+# Print the username
+Write-Host "The currently logged in user is: $currentUser"
