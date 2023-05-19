@@ -1,0 +1,76 @@
+# Get the list of profile SIDs from the registry
+$profileList = Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList'
+
+# Prepare an array to store SID - Username pairs
+$sidUserArray = @()
+
+# Add a 'None' option to the array
+$sidUserArray += ,@(0, "None", "No user")
+
+# For each SID in the profile list, get the associated username
+$i = 1
+foreach ($sid in $profileList) {
+    $username = $sid.GetValue('ProfileImagePath').Split('\')[-1]
+    $sidUserArray += ,@($i, $sid.PSChildName, $username)
+    Write-Output "$i. $($sid.PSChildName): $username"
+    $i++
+}
+
+# Ask the user which profile to remove
+$selectionToDelete = Read-Host 'Enter the number of the profile to remove (Enter 0 for None)'
+
+# Ask the user which profile to update
+$selectionToUpdate = Read-Host 'Enter the number of the profile to update permissions'
+
+# If the selection to delete is '0', end the script
+if ($selectionToDelete -eq 0) {
+    Write-Output "No profile selected for deletion. Ending script."
+    return
+}
+
+# Get the selected SID to delete
+$selectedSidToDelete = ($sidUserArray | Where-Object { $_[0] -eq $selectionToDelete })[1]
+$usernameToDelete = ($sidUserArray | Where-Object { $_[0] -eq $selectionToDelete })[2]
+
+# Rename the user's folder
+$folderToDelete = "C:\users\$usernameToDelete"
+$renamedFolder = "$folderToDelete.old"
+Rename-Item -Path $folderToDelete -NewName $renamedFolder
+
+# Use wmic to remove the profile
+wmic path win32_userprofile where "sid='$selectedSidToDelete'" delete
+
+# Get the selected SID to update
+$selectedSidToUpdate = ($sidUserArray | Where-Object { $_[0] -eq $selectionToUpdate })[1]
+$usernameToUpdate = ($sidUserArray | Where-Object { $_[0] -eq $selectionToUpdate })[2]
+
+# Set the directory path and the SID for updating permissions
+$directory = "C:\users\$usernameToUpdate"
+$sid = $selectedSidToUpdate
+
+# Get the security identifier (SID) object
+$sidObj = New-Object System.Security.Principal.SecurityIdentifier($sid)
+
+# Get the current ACL
+$acl = Get-Acl -Path $directory
+
+# Define full control rights
+$rights = [System.Security.AccessControl.FileSystemRights]::FullControl
+
+# Set inheritance flags
+$inheritanceFlags = [System.Security.AccessControl.InheritanceFlags]"ContainerInherit,ObjectInherit"
+
+# Set propagation flags
+$propagationFlags = [System.Security.AccessControl.PropagationFlags]::None
+
+# Define the type of access rule
+$ruleType = [System.Security.AccessControl.AccessControlType]::Allow
+
+# Create the access rule
+$accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($sidObj, $rights, $inheritanceFlags, $propagationFlags, $ruleType)
+
+# Add the access rule to the ACL
+$acl.AddAccessRule($accessRule)
+
+# Set the ACL
+Set-Acl -Path $directory -AclObject $acl
