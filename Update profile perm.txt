@@ -1,0 +1,30 @@
+# Set the directory path and the SID
+$directory = "C:\users\MichelleBergeron-IDS"
+$sid = "S-1-12-8-4021958495-1163571186-1785306518-1333630664"
+
+# Get the security identifier (SID) object
+$sidObj = New-Object System.Security.Principal.SecurityIdentifier($sid)
+
+# Get the current ACL
+$acl = Get-Acl -Path $directory
+
+# Define full control rights
+$rights = [System.Security.AccessControl.FileSystemRights]::FullControl
+
+# Set inheritance flags
+$inheritanceFlags = [System.Security.AccessControl.InheritanceFlags]"ContainerInherit,ObjectInherit"
+
+# Set propagation flags
+$propagationFlags = [System.Security.AccessControl.PropagationFlags]::None
+
+# Define the type of access rule
+$ruleType = [System.Security.AccessControl.AccessControlType]::Allow
+
+# Create the access rule
+$accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($sidObj, $rights, $inheritanceFlags, $propagationFlags, $ruleType)
+
+# Add the access rule to the ACL
+$acl.AddAccessRule($accessRule)
+
+# Set the ACL
+Set-Acl -Path $directory -AclObject $acl
