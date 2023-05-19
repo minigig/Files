@@ -1,0 +1,32 @@
+# Get the list of profile SIDs from the registry
+$profileList = Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList'
+
+# Prepare an array to store SID - Username pairs
+$sidUserArray = @()
+
+# Add a 'None' option to the array
+$sidUserArray += ,@(0, "None", "No user")
+
+# For each SID in the profile list, get the associated username
+$i = 1
+foreach ($sid in $profileList) {
+    $username = $sid.GetValue('ProfileImagePath').Split('\')[-1]
+    $sidUserArray += ,@($i, $sid.PSChildName, $username)
+    Write-Output "$i. $($sid.PSChildName): $username"
+    $i++
+}
+
+# Ask the user which profile to remove
+$selection = Read-Host 'Enter the number of the profile to remove (Enter 0 for None)'
+
+# If the selection is '0', end the script
+if ($selection -eq 0) {
+    Write-Output "No profile selected for deletion. Ending script."
+    return
+}
+
+# Get the selected SID
+$selectedSid = ($sidUserArray | Where-Object { $_[0] -eq $selection })[1]
+
+# Use wmic to remove the profile
+wmic path win32_userprofile where "sid='$selectedSid'" delete
